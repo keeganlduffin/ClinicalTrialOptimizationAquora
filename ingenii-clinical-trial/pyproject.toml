@@ -1,0 +1,22 @@
+[project]
+name = "submission"
+version = "0.1.0"
+requires-python = ">=3.8"
+
+dependencies = ["numpy>=1.26.4,<3.0.0"]
+
+[build-system]
+requires = ["setuptools", "wheel", "uv"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+[tool.setuptools.package-data]
+submission = ["*"]
+
+[tool.aqora]
+type = "submission"
+competition = "ingenii-clinical-trial"
+
+[tool.aqora.refs]
+solve = { path = "submission.solution", notebook = true }
