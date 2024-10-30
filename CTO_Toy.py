@@ -53,19 +53,22 @@ def delta_mu_rule(model, i):
     return model.delta_mu[i] == sum(model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
 model.delta_mu_constraint = Constraint(model.covariates, rule=delta_mu_rule)
 
-#add constraint that says delta_sigma_mod = 1/(num_patients)* sum of w * sum of w prime times the differentece of x_i_1 and x_i_2
+#add constraint that says delta_sigma_2 = 1/(num_patients)* sum of w_i_s * w_i_(s+1) times the differentece of x_i_1 and x_i_2
 def delta_sigma_mod_rule(model, i):
-    return model.delta_sigma_mod[i] == sum(model.w[i, j] * sum(model.w[k, j] * (model.x[j, 1] - model.x[j, 2]) for k in model.patients) for j in model.patients) / len(model.patients)
+    return model.delta_sigma_mod[i] == sum(model.w[i, j] * model.w[i, j+1] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients if j < len(model.patients) - 1) / len(model.patients)
 model.delta_sigma_mod_constraint = Constraint(model.covariates, rule=delta_sigma_mod_rule)
 
-#add constraint that says delta_sigma = sum of the difference of x_i_1 and x_i_2
+
+#add constraint that says delta_sigma = 1/(num_patients)* sum of w_i_s * w_i_s times the differentece of x_i_1 and x_i_2
 def delta_sigma_rule(model, i):
-    return model.delta_sigma[i] == sum(model.x[j, 1] - model.x[j, 2] for j in model.patients)
+    return model.delta_sigma[i] == sum(model.w[i, j] * model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
 model.delta_sigma_constraint = Constraint(model.covariates, rule=delta_sigma_rule)
 
-# Define the objective to minimize the sum of delta_mu + rho * the sum of the of delta_sigma + 2 * rho * the double summation from s 1 to 3 and s' = s+1 to 3 of delta_sigma_mod 
-model.rho = Param(initialize=0.5)
-model.objective = Objective(expr=sum(model.delta_mu[i] for i in model.covariates) + model.rho * sum(model.delta_sigma[i] for i in model.covariates) + 2 * model.rho * sum(model.delta_sigma_mod[i] for i in model.covariates))
+# Define the objective to minimize the sum of delta_mu + rho * the sum of the of delta_sigma + 2 * rho * the double summation from s 1 to 3 and s' = s+1 to 3 of delta_sigma_2_s_s' where rho is .5
+model.rho = 0.5
+def objective_rule(model):
+    return sum(model.delta_mu[i] for i in model.covariates) + model.rho * sum(model.delta_sigma[i] for i in model.covariates) + 2 * model.rho * sum(model.delta_sigma_mod[i] for i in model.covariates)
+model.objective = Objective(rule=objective_rule, sense=minimize)
 
 # Create a solver (use Gurobi)
 solver = SolverFactory('gurobi')
@@ -80,3 +83,6 @@ for i in model.patients:
     for j in model.groups:
         print(f"x_{i}_{j} = {model.x[i, j].value}")
 print(f"Objective = {model.objective()}")
+
+
+#model.pprint()
