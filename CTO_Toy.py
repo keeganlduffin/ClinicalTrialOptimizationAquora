@@ -48,26 +48,40 @@ model.delta_sigma_mod = Var(model.covariates, within=NonNegativeReals)
 #define continous variables delta_sigma for each covariate
 model.delta_sigma = Var(model.covariates, within=NonNegativeReals)
 
-# Add constraint that says that delta_mu = 1/(num_patiens)* sum of w times the differentece of x_i_1 and x_i_2
+# Add constraint that says that delta_mu = 1/(num_patiens)* sum of w times the difference of x_i_1 and x_i_2
 def delta_mu_rule(model, i):
     return model.delta_mu[i] == sum(model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
 model.delta_mu_constraint = Constraint(model.covariates, rule=delta_mu_rule)
 
-#add constraint that says delta_sigma_2 = 1/(num_patients)* sum of w_i_s * w_i_(s+1) times the differentece of x_i_1 and x_i_2
+#add constraint that says delta_sigma_2 = 1/(num_patients)* sum of w_i_s * w_i_(s+1) times the difference of x_i_1 and x_i_2
 def delta_sigma_mod_rule(model, i):
     return model.delta_sigma_mod[i] == sum(model.w[i, j] * model.w[i, j+1] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients if j < len(model.patients) - 1) / len(model.patients)
 model.delta_sigma_mod_constraint = Constraint(model.covariates, rule=delta_sigma_mod_rule)
 
-
-#add constraint that says delta_sigma = 1/(num_patients)* sum of w_i_s * w_i_s times the differentece of x_i_1 and x_i_2
+#add constraint that says delta_sigma = 1/(num_patients)* sum of w_i_s * w_i_s times the difference of x_i_1 and x_i_2
 def delta_sigma_rule(model, i):
     return model.delta_sigma[i] == sum(model.w[i, j] * model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
 model.delta_sigma_constraint = Constraint(model.covariates, rule=delta_sigma_rule)
 
-# Define the objective to minimize the sum of delta_mu + rho * the sum of the of delta_sigma + 2 * rho * the double summation from s 1 to 3 and s' = s+1 to 3 of delta_sigma_2_s_s' where rho is .5
+#add a constraint that says delta_mu must be greater than the equation used to calculate it or the negative of the equation used to calculate it
+def delta_mu_constraint_rule(model, i):
+    return model.delta_mu[i] >= sum(model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
+model.delta_mu_constraint = Constraint(model.covariates, rule=delta_mu_constraint_rule)
+
+#add a constraint that says delta_sigma_mod must be greater than the equation used to calculate it or the negative of the equation used to calculate it
+def delta_sigma_mod_constraint_rule(model, i):
+    return model.delta_sigma_mod[i] >= sum(model.w[i, j] * model.w[i, j+1] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients if j < len(model.patients) - 1) / len(model.patients)
+model.delta_sigma_mod_constraint = Constraint(model.covariates, rule=delta_sigma_mod_constraint_rule)
+
+#add a constraint that says delta_sigma must be greater than the equation used to calculate it or the negative of the equation used to calculate it
+def delta_sigma_constraint_rule(model, i):
+    return model.delta_sigma[i] >= sum(model.w[i, j] * model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
+model.delta_sigma_constraint = Constraint(model.covariates, rule=delta_sigma_constraint_rule)
+
+# Define the objective to minimize the sum of delta_mu + rho * the sum of the of delta_sigma_s_s + 2 * rho * the double summation from s 1 to 3 and s' = s+1 to 3 of delta_sigma_2_s_s' where rho is .5
 model.rho = 0.5
 def objective_rule(model):
-    return sum(model.delta_mu[i] for i in model.covariates) + model.rho * sum(model.delta_sigma[i] for i in model.covariates) + 2 * model.rho * sum(model.delta_sigma_mod[i] for i in model.covariates)
+    return sum(model.delta_mu[i] for i in model.covariates) + model.rho * sum(model.delta_sigma_mod[i] for i in model.covariates) + 2 * model.rho * sum(model.delta_sigma[i] for i in model.covariates)
 model.objective = Objective(rule=objective_rule, sense=minimize)
 
 # Create a solver (use Gurobi)
@@ -85,4 +99,4 @@ for i in model.patients:
 print(f"Objective = {model.objective()}")
 
 
-#model.pprint()
+model.pprint()
