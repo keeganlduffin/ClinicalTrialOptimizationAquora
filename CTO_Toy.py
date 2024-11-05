@@ -31,7 +31,7 @@ model.one_group = Constraint(model.patients, rule=one_group_rule)
 
 # Add a constraint that says that the firest patient needs to be assigned to the first group
 def first_patient_rule(model):
-    return model.x[1, 1] == 1
+    return model.x[1, 2] == 0
 model.first_patient = Constraint(rule=first_patient_rule)
 
 # Add a constraint that says that each group has to have num_patients / 2
@@ -42,33 +42,62 @@ model.num_patients = Constraint(model.groups, rule=num_patients_rule)
 # Define continuous variables delta_mu for each covariate
 model.delta_mu = Var(model.covariates, within=NonNegativeReals)
 
-#define continuous variables delta_sigma_mod for each covariate; sigma_ss'
+#define continuous variables delta_sigma_mod for each covariate
 model.delta_sigma_mod = Var(model.covariates, within=NonNegativeReals)
 
-#define continuous variables delta_sigma for each covariate; sigma_ss
+#define continuous variables delta_sigma for each covariate
 model.delta_sigma = Var(model.covariates, within=NonNegativeReals)
 
-# Add constraint that says that delta_mu = 1/(num_patients)* sum of w times the difference of x_i_1 and x_i_2
-def delta_mu_rule(model, i):
-    return model.delta_mu[i] == sum(model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
-model.delta_mu_constraint = Constraint(model.covariates, rule=delta_mu_rule)
+#add constraint that says delta_sigma_2 = 1/(num_patients)* sum of w_i_s * w_i_(s+1) times the difference of x_i_1 and x_i_2; sigma_ss'
+# def delta_sigma_mod_rule(model, i):
+#     return model.delta_sigma_mod[i] == sum(model.w[i, j] * model.w[i, j+1] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients if j < len(model.patients) - 1) / len(model.patients)
+# model.delta_sigma_mod_constraint = Constraint(model.covariates, rule=delta_sigma_mod_rule)
 
-#add constraint that says delta_sigma_mod = 1/(num_patients)* sum of w * sum of w prime times the difference of x_i_1 and x_i_2
-def delta_sigma_mod_rule(model, i):
-    return model.delta_sigma_mod[i] == sum(model.w[i, j] * model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
-model.delta_sigma_mod_constraint = Constraint(model.covariates, rule=delta_sigma_mod_rule)
+def delta_sigma_mod_rule_ub(model, i):
+    delta_sigma_mod_ub = sum(model.w[i, j] * model.w[k, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients for k in range(i+1,3)) / len(model.patients)
+    return delta_sigma_mod_ub <= model.delta_sigma_mod[i]
+def delta_sigma_mod_rule_lb(model, i):
+    delta_sigma_mod_lb = -sum(model.w[i, j] * model.w[k, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients for k in range(i+1,3)) / len(model.patients)
+    return delta_sigma_mod_lb <= model.delta_sigma_mod[i]
 
-#add constraint that says delta_sigma = sum of the difference of x_i_1 and x_i_2
-def delta_sigma_rule(model, i):
-    return model.delta_sigma[i] == sum(model.w[i, j] * model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients)/len(model.patients)
-model.delta_sigma_constraint = Constraint(model.covariates, rule=delta_sigma_rule)
+model.delta_sigma_mod_constraint_ub = Constraint(model.covariates, rule=delta_sigma_mod_rule_ub)
+model.delta_sigma_mod_constraint_lb = Constraint(model.covariates, rule=delta_sigma_mod_rule_lb)
 
-# Define the objective to minimize the sum of delta_mu + rho * the sum of the of delta_sigma + 2 * rho * the double summation from s 1 to 3 and s' = s+1 to 3 of delta_sigma_mod 
-model.rho = Param(initialize=0.5)
-model.objective = Objective(expr=sum(model.delta_mu[i] for i in model.covariates) + model.rho * sum(model.delta_sigma[i] for i in model.covariates) + 2 * model.rho * sum(model.delta_sigma_mod[i] for i in model.covariates))
+
+#add a constraint that says delta_mu must be greater than the equation used to calculate it or the negative of the equation used to calculate it
+def delta_mu_constraint_rule_ub(model, i):
+    delta_mu_ub = sum(model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
+    return delta_mu_ub <= model.delta_mu[i] 
+def delta_mu_constraint_rule_lb(model, i):
+    delta_mu_lb = -sum(model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
+    return delta_mu_lb <= model.delta_mu[i] 
+
+model.delta_mu_constraint_ub = Constraint(model.covariates, rule=delta_mu_constraint_rule_ub)
+model.delta_mu_constraint_lb = Constraint(model.covariates, rule=delta_mu_constraint_rule_lb)
+
+#add constraint that says delta_sigma = 1/(num_patients)* sum of w_i_s * w_i_s times the difference of x_i_1 and x_i_2; sigma_ss
+def delta_sigma_rule_ub(model, i):
+    delta_sigma_ub = sum(model.w[i, j] * model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
+    return delta_sigma_ub <= model.delta_sigma[i]
+def delta_sigma_rule_lb(model, i):
+    delta_sigma_lb = -sum(model.w[i, j] * model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
+    return delta_sigma_lb <= model.delta_sigma[i]
+model.delta_sigma_constraint_ub = Constraint(model.covariates, rule=delta_sigma_rule_ub)
+model.delta_sigma_constraint_lb = Constraint(model.covariates, rule=delta_sigma_rule_lb)
+
+#add a constraint that says delta_sigma_mod must be greater than the equation used to calculate it or the negative of the equation used to calculate it
+# def delta_sigma_mod_constraint_rule(model, i):
+#     return model.delta_sigma_mod[i] >= sum(model.w[i, j] * model.w[i, j+1] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients if j < len(model.patients) - 1) / len(model.patients)
+# model.delta_sigma_mod_constraint = Constraint(model.covariates, rule=delta_sigma_mod_constraint_rule)
+
+# Define the objective to minimize the sum of delta_mu + rho * the sum of the of delta_sigma_s_s + 2 * rho * the double summation from s 1 to 3 and s' = s+1 to 3 of delta_sigma_2_s_s' where rho is .5
+model.rho = 0.5
+def objective_rule(model):
+    return sum(model.delta_mu[i] for i in model.covariates) + model.rho * sum(model.delta_sigma[i] for i in model.covariates) + 2 * model.rho * sum(model.delta_sigma_mod[i] for i in model.covariates)
+model.objective = Objective(rule=objective_rule, sense=minimize)
 
 # Create a solver (use Gurobi)
-solver = SolverFactory('gurobi', solver_io="python")
+solver = SolverFactory('gurobi', solver_io='python')
 
 # Solve the model
 solver.solve(model)
@@ -80,5 +109,6 @@ for i in model.patients:
     for j in model.groups:
         print(f"x_{i}_{j} = {model.x[i, j].value}")
 print(f"Objective = {model.objective()}")
+
 
 model.pprint()
