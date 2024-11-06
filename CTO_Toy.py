@@ -33,7 +33,7 @@ def one_group_rule(model, i):
     return sum(model.x[i, j] for j in model.groups) == 1
 model.one_group = Constraint(model.patients, rule=one_group_rule)
 
-# Add a constraint that says that the firest patient needs to be assigned to the first group
+# Add a constraint that says that the first patient needs to be assigned to the first group
 def first_patient_rule(model):
     return model.x[1, 2] == 0
 model.first_patient = Constraint(rule=first_patient_rule)
@@ -103,6 +103,5 @@ for i in model.patients:
     for j in model.groups:
         print(f"x_{i}_{j} = {model.x[i, j].value}")
 print(f"Objective = {model.objective()}")
-
 
 model.pprint()
