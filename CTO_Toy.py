@@ -1,3 +1,7 @@
+""""
+https://aqora.io/competitions/ingenii-clinical-trial
+"""
+
 # import pyomo and the pyomo library
 from pyomo.environ import *
 
@@ -48,11 +52,6 @@ model.delta_sigma_mod = Var(model.covariates, within=NonNegativeReals)
 #define continuous variables delta_sigma for each covariate
 model.delta_sigma = Var(model.covariates, within=NonNegativeReals)
 
-#add constraint that says delta_sigma_2 = 1/(num_patients)* sum of w_i_s * w_i_(s+1) times the difference of x_i_1 and x_i_2; sigma_ss'
-# def delta_sigma_mod_rule(model, i):
-#     return model.delta_sigma_mod[i] == sum(model.w[i, j] * model.w[i, j+1] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients if j < len(model.patients) - 1) / len(model.patients)
-# model.delta_sigma_mod_constraint = Constraint(model.covariates, rule=delta_sigma_mod_rule)
-
 def delta_sigma_mod_rule_ub(model, i):
     delta_sigma_mod_ub = sum(model.w[i, j] * model.w[k, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients for k in range(i+1,3)) / len(model.patients)
     return delta_sigma_mod_ub <= model.delta_sigma_mod[i]
@@ -84,11 +83,6 @@ def delta_sigma_rule_lb(model, i):
     return delta_sigma_lb <= model.delta_sigma[i]
 model.delta_sigma_constraint_ub = Constraint(model.covariates, rule=delta_sigma_rule_ub)
 model.delta_sigma_constraint_lb = Constraint(model.covariates, rule=delta_sigma_rule_lb)
-
-#add a constraint that says delta_sigma_mod must be greater than the equation used to calculate it or the negative of the equation used to calculate it
-# def delta_sigma_mod_constraint_rule(model, i):
-#     return model.delta_sigma_mod[i] >= sum(model.w[i, j] * model.w[i, j+1] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients if j < len(model.patients) - 1) / len(model.patients)
-# model.delta_sigma_mod_constraint = Constraint(model.covariates, rule=delta_sigma_mod_constraint_rule)
 
 # Define the objective to minimize the sum of delta_mu + rho * the sum of the of delta_sigma_s_s + 2 * rho * the double summation from s 1 to 3 and s' = s+1 to 3 of delta_sigma_2_s_s' where rho is .5
 model.rho = 0.5
