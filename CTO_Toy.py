@@ -29,7 +29,7 @@ def one_group_rule(model, i):
     return sum(model.x[i, j] for j in model.groups) == 1
 model.one_group = Constraint(model.patients, rule=one_group_rule)
 
-# Add a constraint that says that the firest patient needs to be assigned to the first group
+# Add a constraint that says that the first patient needs to be assigned to the first group
 def first_patient_rule(model):
     return model.x[1, 1] == 1
 model.first_patient = Constraint(rule=first_patient_rule)
@@ -50,33 +50,65 @@ model.delta_sigma = Var(model.covariates, within=NonNegativeReals)
 
 # Add constraint that says that delta_mu = 1/(num_patiens)* sum of w times the difference of x_i_1 and x_i_2
 def delta_mu_rule(model, i):
-    return model.delta_mu[i] == sum(model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
+    return model.delta_mu[i] == sum(model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients) #equation verified
 model.delta_mu_constraint = Constraint(model.covariates, rule=delta_mu_rule)
 
 #add constraint that says delta_sigma_2 = 1/(num_patients)* sum of w_i_s * w_i_(s+1) times the difference of x_i_1 and x_i_2
 def delta_sigma_mod_rule(model, i):
-    return model.delta_sigma_mod[i] == sum(model.w[i, j] * model.w[i, j+1] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients if j < len(model.patients) - 1) / len(model.patients)
+    return model.delta_sigma_mod[i] == sum(model.w[i, j] * model.w[i, j+1] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients if j < len(model.patients) - 1) / len(model.patients) #equation verified
 model.delta_sigma_mod_constraint = Constraint(model.covariates, rule=delta_sigma_mod_rule)
 
 #add constraint that says delta_sigma = 1/(num_patients)* sum of w_i_s * w_i_s times the difference of x_i_1 and x_i_2
 def delta_sigma_rule(model, i):
-    return model.delta_sigma[i] == sum(model.w[i, j] * model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
+    return model.delta_sigma[i] == sum(model.w[i, j] * model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients) #equation verified
 model.delta_sigma_constraint = Constraint(model.covariates, rule=delta_sigma_rule)
 
-#add a constraint that says delta_mu must be greater than the equation used to calculate it or the negative of the equation used to calculate it
-def delta_mu_constraint_rule(model, i):
-    return model.delta_mu[i] >= sum(model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
-model.delta_mu_constraint = Constraint(model.covariates, rule=delta_mu_constraint_rule)
+#define varibles for the bounds Uone, Utwo, and Uthree
+model.U1 = Param(initialize=1, mutable=True)
+model.U2 = Param(initialize=1, mutable=True)
+model.U3 = Param(initialize=1, mutable=True)
 
-#add a constraint that says delta_sigma_mod must be greater than the equation used to calculate it or the negative of the equation used to calculate it
-def delta_sigma_mod_constraint_rule(model, i):
-    return model.delta_sigma_mod[i] >= sum(model.w[i, j] * model.w[i, j+1] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients if j < len(model.patients) - 1) / len(model.patients)
-model.delta_sigma_mod_constraint = Constraint(model.covariates, rule=delta_sigma_mod_constraint_rule)
+#add a constraint that says delta_mu equals Uone
+def delta_mu_u1_rule(model):
+    return model.delta_mu[1] == 0
+model.delta_mu_u1_constraint = Constraint(rule=delta_mu_u1_rule)
 
-#add a constraint that says delta_sigma must be greater than the equation used to calculate it or the negative of the equation used to calculate it
-def delta_sigma_constraint_rule(model, i):
-    return model.delta_sigma[i] >= sum(model.w[i, j] * model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
-model.delta_sigma_constraint = Constraint(model.covariates, rule=delta_sigma_constraint_rule)
+#add a constraint that says delta_sigma_mod equals Utwo
+def delta_sigma_mod_u2_rule(model):
+    return model.delta_sigma_mod[2] == 0
+model.delta_sigma_mod_u2_constraint = Constraint(rule=delta_sigma_mod_u2_rule)
+
+#add a constraint that says delta_sigma equals Uthree
+def delta_sigma_u3_rule(model):
+    return model.delta_sigma[3] == 0
+model.delta_sigma_u3_constraint = Constraint(rule=delta_sigma_u3_rule)
+
+#add a constraint that says delta_mu is greater than or equal to -U1 and less than or equal to U1
+def delta_mu_lower_bound_rule(model):
+    return model.delta_mu[1] >= -model.U1
+model.delta_mu_lower_bound_constraint = Constraint(rule=delta_mu_lower_bound_rule)
+
+def delta_mu_upper_bound_rule(model):
+    return model.delta_mu[1] <= model.U1
+model.delta_mu_upper_bound_constraint = Constraint(rule=delta_mu_upper_bound_rule)
+
+#add a constraint that says delta_sigma_mod is greater than or equal to -U2 and less than or equal to U2
+def delta_sigma_mod_lower_bound_rule(model):
+    return model.delta_sigma_mod[2] >= -model.U2
+model.delta_sigma_mod_lower_bound_constraint = Constraint(rule=delta_sigma_mod_lower_bound_rule)
+
+def delta_sigma_mod_upper_bound_rule(model):
+    return model.delta_sigma_mod[2] <= model.U2
+model.delta_sigma_mod_upper_bound_constraint = Constraint(rule=delta_sigma_mod_upper_bound_rule)
+
+#add a constraint that says delta_sigma is greater than or equal to -U3 and less than or equal to U3
+def delta_sigma_lower_bound_rule(model):
+    return model.delta_sigma[3] >= -model.U3
+model.delta_sigma_lower_bound_constraint = Constraint(rule=delta_sigma_lower_bound_rule)
+
+def delta_sigma_upper_bound_rule(model):
+    return model.delta_sigma[3] <= model.U3
+model.delta_sigma_upper_bound_constraint = Constraint(rule=delta_sigma_upper_bound_rule)
 
 # Define the objective to minimize the sum of delta_mu + rho * the sum of the of delta_sigma_s_s + 2 * rho * the double summation from s 1 to 3 and s' = s+1 to 3 of delta_sigma_2_s_s' where rho is .5
 model.rho = 0.5
@@ -99,4 +131,4 @@ for i in model.patients:
 print(f"Objective = {model.objective()}")
 
 
-model.pprint()
+#model.pprint()
