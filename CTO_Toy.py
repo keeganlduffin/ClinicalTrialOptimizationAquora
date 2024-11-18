@@ -53,68 +53,100 @@ def delta_mu_rule(model, i):
     return model.delta_mu[i] == sum(model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients) #equation verified
 model.delta_mu_constraint = Constraint(model.covariates, rule=delta_mu_rule)
 
-#add constraint that says delta_sigma_2 = 1/(num_patients)* sum of w_i_s * w_i_(s+1) times the difference of x_i_1 and x_i_2
+#add constraint that says delta_sigma_mod = 1/(num_patients)* sum of w_i_s * w_i_(s+1) times the difference of x_i_1 and x_i_2
 def delta_sigma_mod_rule(model, i):
     return model.delta_sigma_mod[i] == sum(model.w[i, j] * model.w[i, j+1] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients if j < len(model.patients) - 1) / len(model.patients) #equation verified
-model.delta_sigma_mod_constraint = Constraint(model.covariates, rule=delta_sigma_mod_rule)
+model.delta_sigma_mod_constraint = Constraint(model.covariates, rule=delta_sigma_mod_rule) #calculation is incorrect
 
 #add constraint that says delta_sigma = 1/(num_patients)* sum of w_i_s * w_i_s times the difference of x_i_1 and x_i_2
 def delta_sigma_rule(model, i):
     return model.delta_sigma[i] == sum(model.w[i, j] * model.w[i, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients) #equation verified
 model.delta_sigma_constraint = Constraint(model.covariates, rule=delta_sigma_rule)
 
-#define varibles for the bounds Uone, Utwo, and Uthree
-model.U1 = Param(initialize=1, mutable=True)
-model.U2 = Param(initialize=1, mutable=True)
-model.U3 = Param(initialize=1, mutable=True)
+#define delta_mu_opt, delta_sigma_opt, and delta_sigma_mod_opt as parameters with 3 covariates
+model.delta_mu_opt = Param(initialize=[1, 2, 3], mutable=True)
+model.delta_sigma_opt = Param(initialize=[1, 2, 3], mutable=True)
+model.delta_sigma_mod_opt = Param(initialize=[1, 2, 3], mutable=True)
 
-#add a constraint that says delta_mu equals Uone
-def delta_mu_u1_rule(model):
-    return model.delta_mu[1] == 0
-model.delta_mu_u1_constraint = Constraint(rule=delta_mu_u1_rule)
-
-#add a constraint that says delta_sigma_mod equals Utwo
-def delta_sigma_mod_u2_rule(model):
-    return model.delta_sigma_mod[2] == 0
-model.delta_sigma_mod_u2_constraint = Constraint(rule=delta_sigma_mod_u2_rule)
-
-#add a constraint that says delta_sigma equals Uthree
-def delta_sigma_u3_rule(model):
-    return model.delta_sigma[3] == 0
-model.delta_sigma_u3_constraint = Constraint(rule=delta_sigma_u3_rule)
-
-#add a constraint that says delta_mu is greater than or equal to -U1 and less than or equal to U1
+#add a constraint that says delta_mu_opt is greater than or equal to -delta_mu and greater than or equal to delta_mu
 def delta_mu_lower_bound_rule(model):
-    return model.delta_mu[1] >= -model.U1
-model.delta_mu_lower_bound_constraint = Constraint(rule=delta_mu_lower_bound_rule)
+    return model.delta_mu_opt[1] >= -model.delta_mu[1]
+model.delta_mu_lower_bound_constraint1 = Constraint(rule=delta_mu_lower_bound_rule)
 
 def delta_mu_upper_bound_rule(model):
-    return model.delta_mu[1] <= model.U1
-model.delta_mu_upper_bound_constraint = Constraint(rule=delta_mu_upper_bound_rule)
+    return model.delta_mu_opt[1] >= model.delta_mu[1]
+model.delta_mu_upper_bound_constraint2 = Constraint(rule=delta_mu_upper_bound_rule)
 
-#add a constraint that says delta_sigma_mod is greater than or equal to -U2 and less than or equal to U2
+def delta_mu_lower_bound_rule(model):
+    return model.delta_mu_opt[2] >= -model.delta_mu[2]
+model.delta_mu_lower_bound_constraint3 = Constraint(rule=delta_mu_lower_bound_rule)
+
+def delta_mu_upper_bound_rule(model):
+    return model.delta_mu_opt[2] >= model.delta_mu[2]
+model.delta_mu_upper_bound_constraint4 = Constraint(rule=delta_mu_upper_bound_rule)
+
+def delta_mu_lower_bound_rule(model):
+    return model.delta_mu_opt[3] >= -model.delta_mu[3]
+model.delta_mu_lower_bound_constraint5 = Constraint(rule=delta_mu_lower_bound_rule)
+
+def delta_mu_upper_bound_rule(model):
+    return model.delta_mu_opt[3] >= model.delta_mu[3]
+model.delta_mu_upper_bound_constraint6 = Constraint(rule=delta_mu_upper_bound_rule)
+
+#add a constraint that says delta_sigma_mod_opt is greater than or equal to -delta_sigma_mod and greater than or equal to delta_sigma_mod
 def delta_sigma_mod_lower_bound_rule(model):
-    return model.delta_sigma_mod[2] >= -model.U2
-model.delta_sigma_mod_lower_bound_constraint = Constraint(rule=delta_sigma_mod_lower_bound_rule)
+    return model.delta_sigma_mod_opt[1] >= -model.delta_sigma_mod[1]
+model.delta_sigma_mod_lower_bound_constraint1 = Constraint(rule=delta_sigma_mod_lower_bound_rule)
 
 def delta_sigma_mod_upper_bound_rule(model):
-    return model.delta_sigma_mod[2] <= model.U2
-model.delta_sigma_mod_upper_bound_constraint = Constraint(rule=delta_sigma_mod_upper_bound_rule)
+    return model.delta_sigma_mod_opt[1] >= model.delta_sigma_mod[1]
+model.delta_sigma_mod_upper_bound_constraint1 = Constraint(rule=delta_sigma_mod_upper_bound_rule)
 
-#add a constraint that says delta_sigma is greater than or equal to -U3 and less than or equal to U3
+def delta_sigma_mod_lower_bound_rule(model):
+    return model.delta_sigma_mod_opt[2] >= -model.delta_sigma_mod[2]
+model.delta_sigma_mod_lower_bound_constraint2 = Constraint(rule=delta_sigma_mod_lower_bound_rule)
+
+def delta_sigma_mod_upper_bound_rule(model):
+    return model.delta_sigma_mod_opt[2] >= model.delta_sigma_mod[2]
+model.delta_sigma_mod_upper_bound_constraint2 = Constraint(rule=delta_sigma_mod_upper_bound_rule)
+
+def delta_sigma_mod_lower_bound_rule(model):
+    return model.delta_sigma_mod_opt[3] >= -model.delta_sigma_mod[3]
+model.delta_sigma_mod_lower_bound_constraint3 = Constraint(rule=delta_sigma_mod_lower_bound_rule)
+
+def delta_sigma_mod_upper_bound_rule(model):
+    return model.delta_sigma_mod_opt[3] >= model.delta_sigma_mod[3]
+model.delta_sigma_mod_upper_bound_constraint3 = Constraint(rule=delta_sigma_mod_upper_bound_rule)
+
+#add a constraint that says delta_sigma_opt is greater than or equal to -delta_sigma and greater than or equal to delta_sigma
 def delta_sigma_lower_bound_rule(model):
-    return model.delta_sigma[3] >= -model.U3
-model.delta_sigma_lower_bound_constraint = Constraint(rule=delta_sigma_lower_bound_rule)
+    return model.delta_sigma_opt[1] >= -model.delta_sigma[1]
+model.delta_sigma_lower_bound_constraint1 = Constraint(rule=delta_sigma_lower_bound_rule)
 
 def delta_sigma_upper_bound_rule(model):
-    return model.delta_sigma[3] <= model.U3
-model.delta_sigma_upper_bound_constraint = Constraint(rule=delta_sigma_upper_bound_rule)
+    return model.delta_sigma_opt[1] >= model.delta_sigma[1]
+model.delta_sigma_upper_bound_constraint1 = Constraint(rule=delta_sigma_upper_bound_rule)
 
-# Define the objective to minimize the sum of delta_mu + rho * the sum of the of delta_sigma_s_s + 2 * rho * the double summation from s 1 to 3 and s' = s+1 to 3 of delta_sigma_2_s_s' where rho is .5
-model.rho = 0.5
+def delta_sigma_lower_bound_rule(model):
+    return model.delta_sigma_opt[2] >= -model.delta_sigma[2]
+model.delta_sigma_lower_bound_constraint2 = Constraint(rule=delta_sigma_lower_bound_rule)
+
+def delta_sigma_upper_bound_rule(model):
+    return model.delta_sigma_opt[2] >= model.delta_sigma[2]
+model.delta_sigma_upper_bound_constraint2 = Constraint(rule=delta_sigma_upper_bound_rule)
+
+def delta_sigma_lower_bound_rule(model):
+    return model.delta_sigma_opt[3] >= -model.delta_sigma[3]
+model.delta_sigma_lower_bound_constraint3 = Constraint(rule=delta_sigma_lower_bound_rule)
+
+def delta_sigma_upper_bound_rule(model):
+    return model.delta_sigma_opt[3] >= model.delta_sigma[3]
+model.delta_sigma_upper_bound_constraint3 = Constraint(rule=delta_sigma_upper_bound_rule)
+
+# Define the objective function to minimize the sum of delta_mu_opt + rho * the sum of the of delta_sigma_opt + 2 * rho * the double summation from s 1 to 3 and s' = s+1 to 3 of delta_sigma_mod_opt where rho is .5
 def objective_rule(model):
-    return sum(model.delta_mu[i] for i in model.covariates) + model.rho * sum(model.delta_sigma_mod[i] for i in model.covariates) + 2 * model.rho * sum(model.delta_sigma[i] for i in model.covariates)
-model.objective = Objective(rule=objective_rule, sense=minimize)
+    return model.delta_mu_opt + .5 * model.delta_sigma_opt + model.delta_sigma_mod_opt
+model.objective = Objective(rule=objective_rule)
 
 # Create a solver (use Gurobi)
 solver = SolverFactory('gurobi')
