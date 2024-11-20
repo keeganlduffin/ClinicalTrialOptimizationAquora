@@ -52,15 +52,17 @@ model.delta_sigma_mod = Var(model.covariates, within=NonNegativeReals)
 #define continuous variables delta_sigma for each covariate
 model.delta_sigma = Var(model.covariates, within=NonNegativeReals)
 
-def delta_sigma_mod_rule_ub(model, i):
-    delta_sigma_mod_ub = sum(model.w[i, j] * model.w[k, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients for k in range(i+1,3)) / len(model.patients)
+model.smart = Set(initialize=[(i, k) for i in range(1, 4) for k in range(i+1, 4)])
+
+def delta_sigma_mod_rule_ub(model, i, k):
+    delta_sigma_mod_ub = sum(model.w[i, j] * model.w[k, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
     return delta_sigma_mod_ub <= model.delta_sigma_mod[i]
-def delta_sigma_mod_rule_lb(model, i):
-    delta_sigma_mod_lb = -sum(model.w[i, j] * model.w[k, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients for k in range(i+1,3)) / len(model.patients)
+def delta_sigma_mod_rule_lb(model, i, k):
+    delta_sigma_mod_lb = -sum(model.w[i, j] * model.w[k, j] * (model.x[j, 1] - model.x[j, 2]) for j in model.patients) / len(model.patients)
     return delta_sigma_mod_lb <= model.delta_sigma_mod[i]
 
-model.delta_sigma_mod_constraint_ub = Constraint(model.covariates, rule=delta_sigma_mod_rule_ub)
-model.delta_sigma_mod_constraint_lb = Constraint(model.covariates, rule=delta_sigma_mod_rule_lb)
+model.delta_sigma_mod_constraint_ub = Constraint(model.smart, rule=delta_sigma_mod_rule_ub)
+model.delta_sigma_mod_constraint_lb = Constraint(model.smart, rule=delta_sigma_mod_rule_lb)
 
 
 #add a constraint that says delta_mu must be greater than the equation used to calculate it or the negative of the equation used to calculate it
